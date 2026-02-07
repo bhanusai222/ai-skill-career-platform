@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Career Intelligence Platform</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: #f4f6f8;
+            padding: 40px;
+        }
+        h1 {
+            color: #2c3e50;
+        }
+        .box {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            width: 500px;
+        }
+        button {
+            margin-top: 10px;
+            padding: 10px;
+            background: #3498db;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        pre {
+            background: #eee;
+            padding: 10px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+
+<body>
+
+<h1>AI Skill & Career Intelligence Platform</h1>
+
+<div class="box">
+    <input type="file" id="resume" />
+    <br>
+    <button onclick="uploadResume()">Analyze Resume</button>
+
+    <h3>Status</h3>
+    <p id="status">Waiting for resume...</p>
+
+    <h3>Extracted Skills</h3>
+    <ul id="skills"></ul>
+
+    <h3>Career Recommendation</h3>
+    <p id="career"></p>
+
+    <h3>Learning Plan</h3>
+    <ul id="learning"></ul>
+
+    <h3>Job Readiness</h3>
+    <p id="job"></p>
+</div>
+
+<script>
+async function uploadResume() {
+    const fileInput = document.getElementById("resume");
+
+    if (!fileInput.files.length) {
+        alert("Please select a resume PDF");
+        return;
+    }
+
+    document.getElementById("status").innerText = "Analyzing resume...";
+    document.getElementById("skills").innerHTML = "";
+    document.getElementById("learning").innerHTML = "";
+
+    const formData = new FormData();
+    formData.append("file", fileInput.files[0]);
+
+    const response = await fetch("http://127.0.0.1:8000/upload-resume", {
+        method: "POST",
+        body: formData
+    });
+
+    const data = await response.json();
+
+    document.getElementById("status").innerText = data.user_profile.resume_status;
+
+    // Skills
+    data.user_profile.skills.forEach(skill => {
+        const li = document.createElement("li");
+        li.innerText = skill;
+        document.getElementById("skills").appendChild(li);
+    });
+
+    // Career
+    document.getElementById("career").innerText =
+        data.career.recommended_career;
+
+    // Learning Plan
+    for (const week in data.learning_plan.learning_plan) {
+        const li = document.createElement("li");
+        li.innerText = `${week}: ${data.learning_plan.learning_plan[week]}`;
+        document.getElementById("learning").appendChild(li);
+    }
+
+    // Job Readiness
+    document.getElementById("job").innerText =
+        `${data.job_readiness.job_status} (${data.job_readiness.match_percentage}%)`;
+}
+</script>
+
+</body>
+
+</html>

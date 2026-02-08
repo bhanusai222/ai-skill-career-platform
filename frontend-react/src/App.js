@@ -20,14 +20,22 @@ function App() {
     formData.append("file", file);
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/upload-resume", {
-        method: "POST",
-        body: formData,
-      });
+      const res = await fetch(
+        "https://ai-skill-career-platform-xla3.onrender.com/upload-resume",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error("Backend error");
+      }
 
       const data = await res.json();
       setResult(data);
-    } catch {
+    } catch (err) {
+      console.error(err);
       alert("Failed to connect to backend");
     }
 
@@ -74,74 +82,77 @@ function App() {
             <h2>🛠 Skills Extracted From Your Resume</h2>
             <div className="skill-list">
               {result.user_profile?.skills?.map((skill, i) => (
-                <span key={i} className="skill-chip">{skill}</span>
+                <span key={i} className="skill-chip">
+                  {skill}
+                </span>
               ))}
             </div>
           </div>
 
           {/* ================= JOBS BASED ON RESUME ================= */}
-         {Array.isArray(result.job_opportunities) && (
-  <div className="card">
-    <h2>💼 Jobs Based on Your Resume Skills</h2>
+          {Array.isArray(result.job_opportunities) && (
+            <div className="card">
+              <h2>💼 Jobs Based on Your Resume Skills</h2>
 
-    <div className="job-grid">
-      {result.job_opportunities.map((job, i) => {
-        const hasApiLink =
-          Array.isArray(job.apply_links) &&
-          job.apply_links.some(l => l?.url);
+              <div className="job-grid">
+                {result.job_opportunities.map((job, i) => {
+                  const hasApiLink =
+                    Array.isArray(job.apply_links) &&
+                    job.apply_links.some((l) => l?.url);
 
-        const fallbackLink = `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(
-          job.role || job.title || ""
-        )}`;
+                  const fallbackLink = `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(
+                    job.role || job.title || ""
+                  )}`;
 
-        return (
-          <div key={i} className="job-card">
-            <h3>{job.role || job.title}</h3>
-            <p>{job.company || "Company not specified"}</p>
+                  return (
+                    <div key={i} className="job-card">
+                      <h3>{job.role || job.title}</h3>
+                      <p>{job.company || "Company not specified"}</p>
 
-            {/* 🔖 JOB TAGS */}
-            <div className="job-tags">
-              <span className="tag fresher">Fresher</span>
-              <span className="tag experienced">Experienced</span>
-              <span className="tag remote">Remote</span>
+                      {/* TAGS */}
+                      <div className="job-tags">
+                        <span className="tag fresher">Fresher</span>
+                        <span className="tag experienced">Experienced</span>
+                        <span className="tag remote">Remote</span>
+                      </div>
+
+                      <p className="salary">
+                        💰 {salaryByRole(job.role)}
+                      </p>
+
+                      {/* SOURCE BADGE */}
+                      <div className="job-source">
+                        {hasApiLink ? (
+                          <span className="badge google">Google Jobs</span>
+                        ) : (
+                          <span className="badge linkedin">LinkedIn</span>
+                        )}
+                      </div>
+
+                      {/* APPLY BUTTONS */}
+                      {hasApiLink ? (
+                        job.apply_links.map(
+                          (link, idx) =>
+                            link?.url && (
+                              <button
+                                key={idx}
+                                onClick={() => openLink(link.url)}
+                              >
+                                Apply on {link.platform}
+                              </button>
+                            )
+                        )
+                      ) : (
+                        <button onClick={() => openLink(fallbackLink)}>
+                          Apply on LinkedIn
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-
-            <p className="salary">💰 {salaryByRole(job.role)}</p>
-
-            {/* 🏷️ JOB SOURCE BADGE */}
-            <div className="job-source">
-              {hasApiLink ? (
-                <span className="badge google">Google Jobs</span>
-              ) : (
-                <span className="badge linkedin">LinkedIn</span>
-              )}
-            </div>
-
-            {/* ✅ APPLY BUTTON */}
-            {hasApiLink ? (
-              job.apply_links.map(
-                (link, idx) =>
-                  link?.url && (
-                    <button
-                      key={idx}
-                      onClick={() => openLink(link.url)}
-                    >
-                      Apply on {link.platform}
-                    </button>
-                  )
-              )
-            ) : (
-              <button onClick={() => openLink(fallbackLink)}>
-                Apply on LinkedIn
-              </button>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  </div>
-)}
-
+          )}
 
           {/* ================= CAREER ================= */}
           <div className="card">
@@ -154,7 +165,7 @@ function App() {
             </p>
           </div>
 
-          {/* ================= COURSES TO LEARN ================= */}
+          {/* ================= COURSES ================= */}
           {Array.isArray(result.learning_plan) && (
             <div className="card">
               <h2>📚 Skills & Courses You Need to Learn</h2>
@@ -168,7 +179,9 @@ function App() {
                     className="course clickable"
                     onClick={() =>
                       openLink(
-                        `https://www.coursera.org/search?query=${encodeURIComponent(item.skill)}`
+                        `https://www.coursera.org/search?query=${encodeURIComponent(
+                          item.skill
+                        )}`
                       )
                     }
                   >
@@ -179,7 +192,9 @@ function App() {
                     className="course clickable"
                     onClick={() =>
                       openLink(
-                        `https://nptel.ac.in/courses/search?searchText=${encodeURIComponent(item.skill)}`
+                        `https://nptel.ac.in/courses/search?searchText=${encodeURIComponent(
+                          item.skill
+                        )}`
                       )
                     }
                   >
@@ -204,7 +219,9 @@ function App() {
                     <button
                       onClick={() =>
                         openLink(
-                          `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(item.skill)}`
+                          `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(
+                            item.skill
+                          )}`
                         )
                       }
                     >

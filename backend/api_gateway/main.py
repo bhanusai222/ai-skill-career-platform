@@ -1,14 +1,14 @@
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.agents.user_profiling.service import analyze_resume
-from backend.agents.skill_gap.service import find_skill_gap
-from backend.agents.career_planner.service import recommend_career
-from backend.agents.career_roadmap.service import generate_career_roadmap
-from backend.agents.learning_recommendation.service import create_learning_plan
-from backend.agents.live_jobs.service import fetch_live_jobs
-from backend.agents.trending_courses.service import get_trending_courses
-from backend.agents.salary_prediction.service import predict_salary
+from agents.user_profiling.service import analyze_resume
+from agents.skill_gap.service import find_skill_gap
+from agents.career_planner.service import recommend_career
+from agents.career_roadmap.service import generate_career_roadmap
+from agents.learning_recommendation.service import create_learning_plan
+from agents.live_jobs.service import fetch_live_jobs
+from agents.trending_courses.service import get_trending_courses
+from agents.salary_prediction.service import predict_salary
 
 app = FastAPI()
 

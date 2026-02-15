@@ -1,6 +1,11 @@
 import React, { useState } from "react";
 import "./App.css";
 
+/* 🔥 IMPORTANT: fallback if env variable not set */
+const API_URL =
+  process.env.REACT_APP_API_URL ||
+  "https://ai-skill-career-platform-xla3.onrender.com";
+
 function App() {
   const [file, setFile] = useState(null);
   const [result, setResult] = useState(null);
@@ -20,26 +25,23 @@ function App() {
     formData.append("file", file);
 
     try {
-      const res = await fetch(
-        "https://ai-skill-career-platform-xla3.onrender.com/upload-resume",
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
+      const res = await fetch(`${API_URL}/upload-resume`, {
+        method: "POST",
+        body: formData,
+      });
 
       if (!res.ok) {
-        throw new Error("Backend error");
+        throw new Error("Backend response error");
       }
 
       const data = await res.json();
       setResult(data);
     } catch (err) {
-      console.error(err);
-      alert("Failed to connect to backend");
+      console.error("Backend connection error:", err);
+      alert("❌ Backend sleeping or not connected. Wait 30 sec and try again.");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   /* ================= SAFE LINK OPEN ================= */
@@ -61,7 +63,7 @@ function App() {
 
   return (
     <div className="app">
-      <h1>AI Skill & Career Intelligence Platform</h1>
+      <h1>🚀 AI Skill & Career Intelligence Platform</h1>
 
       {/* ================= UPLOAD ================= */}
       <div className="card upload-card">
@@ -70,14 +72,14 @@ function App() {
           accept=".pdf"
           onChange={(e) => setFile(e.target.files[0])}
         />
-        <button onClick={uploadResume}>
-          {loading ? "Analyzing..." : "Analyze Resume"}
+        <button onClick={uploadResume} disabled={loading}>
+          {loading ? "Analyzing Resume..." : "Analyze Resume"}
         </button>
       </div>
 
       {result && (
         <>
-          {/* ================= RESUME SKILLS ================= */}
+          {/* ================= SKILLS ================= */}
           <div className="card">
             <h2>🛠 Skills Extracted From Your Resume</h2>
             <div className="skill-list">
@@ -89,7 +91,7 @@ function App() {
             </div>
           </div>
 
-          {/* ================= JOBS BASED ON RESUME ================= */}
+          {/* ================= JOBS ================= */}
           {Array.isArray(result.job_opportunities) && (
             <div className="card">
               <h2>💼 Jobs Based on Your Resume Skills</h2>
@@ -116,11 +118,9 @@ function App() {
                         <span className="tag remote">Remote</span>
                       </div>
 
-                      <p className="salary">
-                        💰 {salaryByRole(job.role)}
-                      </p>
+                      <p className="salary">💰 {salaryByRole(job.role)}</p>
 
-                      {/* SOURCE BADGE */}
+                      {/* SOURCE */}
                       <div className="job-source">
                         {hasApiLink ? (
                           <span className="badge google">Google Jobs</span>
@@ -129,7 +129,7 @@ function App() {
                         )}
                       </div>
 
-                      {/* APPLY BUTTONS */}
+                      {/* APPLY */}
                       {hasApiLink ? (
                         job.apply_links.map(
                           (link, idx) =>
@@ -205,7 +205,7 @@ function App() {
             </div>
           )}
 
-          {/* ================= JOBS AFTER LEARNING ================= */}
+          {/* ================= FUTURE JOBS ================= */}
           {Array.isArray(result.learning_plan) && (
             <div className="card">
               <h2>📈 Jobs After Learning These Skills</h2>
@@ -233,7 +233,7 @@ function App() {
             </div>
           )}
 
-          {/* ================= JOB READINESS ================= */}
+          {/* ================= READINESS ================= */}
           {result.job_readiness && (
             <div className="card">
               <h2>📊 Job Readiness</h2>

@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import "./App.css";
 
-/* 🔥 Backend URL (fallback if env not set) */
 const API_URL =
   process.env.REACT_APP_API_URL ||
   "https://ai-skill-career-platform-xla3.onrender.com";
@@ -11,14 +10,25 @@ function App() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  /* ================= BACKEND WAKE FUNCTION ================= */
-  const wakeBackend = async () => {
-    try {
-      await fetch(API_URL);
-      await new Promise((res) => setTimeout(res, 4000));
-    } catch (e) {
-      console.log("Backend waking...");
+  /* ================= WAIT UNTIL BACKEND IS READY ================= */
+  const waitForBackend = async () => {
+    console.log("Checking backend status...");
+
+    for (let i = 0; i < 15; i++) {
+      try {
+        const res = await fetch(API_URL);
+        if (res.ok) {
+          console.log("Backend is awake ✅");
+          return;
+        }
+      } catch (err) {
+        console.log("Still sleeping...");
+      }
+
+      await new Promise((r) => setTimeout(r, 5000)); // wait 5 sec
     }
+
+    throw new Error("Backend did not wake in time");
   };
 
   /* ================= FILE SELECT ================= */
@@ -30,7 +40,6 @@ function App() {
       return;
     }
 
-    // Only allow PDF
     if (selected.type !== "application/pdf") {
       alert("Please upload only PDF file");
       e.target.value = "";
@@ -51,39 +60,36 @@ function App() {
     setLoading(true);
     setResult(null);
 
-    const formData = new FormData();
-    formData.append("file", file);
-
     try {
-      await wakeBackend();
+      // 🔥 WAIT UNTIL BACKEND FULLY AWAKE
+      await waitForBackend();
+
+      const formData = new FormData();
+      formData.append("file", file);
 
       const res = await fetch(`${API_URL}/upload-resume`, {
         method: "POST",
         body: formData,
       });
 
-      if (!res.ok) {
-        throw new Error("Backend error");
-      }
+      if (!res.ok) throw new Error("Upload failed");
 
       const data = await res.json();
       setResult(data);
     } catch (err) {
-      console.error("Backend error:", err);
-      alert("⚠️ Backend waking up... wait 30 sec and try again");
+      console.error(err);
+      alert("Server is starting... please wait 1 minute and try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  /* ================= SAFE LINK OPEN ================= */
   const openLink = (url) => {
     if (!url) return;
     const safe = url.startsWith("http") ? url : `https://${url}`;
     window.open(safe, "_blank", "noopener,noreferrer");
   };
 
-  /* ================= SALARY ================= */
   const salaryByRole = (role = "") => {
     const r = role?.toLowerCase() || "";
     if (r.includes("ai") || r.includes("machine")) return "₹8 – 16 LPA";
@@ -97,7 +103,6 @@ function App() {
     <div className="app">
       <h1>🚀 AI Skill & Career Intelligence Platform</h1>
 
-      {/* ================= UPLOAD ================= */}
       <div className="card upload-card">
         <input
           type="file"
@@ -106,16 +111,15 @@ function App() {
         />
 
         <button onClick={uploadResume} disabled={loading}>
-          {loading ? "Analyzing Resume..." : "Analyze Resume"}
+          {loading ? "Starting Server & Analyzing..." : "Analyze Resume"}
         </button>
       </div>
 
       {result && (
         <>
-          {/* ================= SKILLS ================= */}
           {Array.isArray(result.user_profile?.skills) && (
             <div className="card">
-              <h2>🛠 Skills Extracted From Your Resume</h2>
+              <h2>🛠 Skills Extracted</h2>
               <div className="skill-list">
                 {result.user_profile.skills.map((skill, i) => (
                   <span key={i} className="skill-chip">
@@ -126,18 +130,12 @@ function App() {
             </div>
           )}
 
-          {/* ================= JOBS ================= */}
           {Array.isArray(result.job_opportunities) && (
             <div className="card">
-              <h2>💼 Jobs Based on Your Resume Skills</h2>
-
+              <h2>💼 Job Opportunities</h2>
               <div className="job-grid">
                 {result.job_opportunities.map((job, i) => {
-                  const hasApiLink =
-                    Array.isArray(job?.apply_links) &&
-                    job.apply_links.some((l) => l?.url);
-
-                  const fallbackLink = `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(
+                  const fallback = `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(
                     job?.role || job?.title || ""
                   )}`;
 
@@ -145,112 +143,21 @@ function App() {
                     <div key={i} className="job-card">
                       <h3>{job?.role || job?.title}</h3>
                       <p>{job?.company || "Company not specified"}</p>
-
-                      <div className="job-tags">
-                        <span className="tag fresher">Fresher</span>
-                        <span className="tag experienced">Experienced</span>
-                        <span className="tag remote">Remote</span>
-                      </div>
-
                       <p className="salary">
                         💰 {salaryByRole(job?.role)}
                       </p>
 
-                      <div className="job-source">
-                        {hasApiLink ? (
-                          <span className="badge google">Google Jobs</span>
-                        ) : (
-                          <span className="badge linkedin">LinkedIn</span>
-                        )}
-                      </div>
-
-                      {hasApiLink
-                        ? job.apply_links.map(
-                            (link, idx) =>
-                              link?.url && (
-                                <button
-                                  key={idx}
-                                  onClick={() => openLink(link.url)}
-                                >
-                                  Apply on {link.platform || "Platform"}
-                                </button>
-                              )
-                          )
-                        : (
-                          <button onClick={() => openLink(fallbackLink)}>
-                            Apply on LinkedIn
-                          </button>
-                        )}
+                      <button
+                        onClick={() =>
+                          openLink(job?.apply_links?.[0]?.url || fallback)
+                        }
+                      >
+                        Apply
+                      </button>
                     </div>
                   );
                 })}
               </div>
-            </div>
-          )}
-
-          {/* ================= CAREER ================= */}
-          {result.career && (
-            <div className="card">
-              <h2>🎯 Recommended Career</h2>
-              <p><b>Role:</b> {result.career.role}</p>
-              <p><b>Timeline:</b> {result.career.timeline}</p>
-              <p><b>Risk:</b> {result.career.risk}</p>
-              <p className="salary">
-                💰 Expected Salary: {salaryByRole(result.career.role)}
-              </p>
-            </div>
-          )}
-
-          {/* ================= COURSES ================= */}
-          {Array.isArray(result.learning_plan) && (
-            <div className="card">
-              <h2>📚 Skills & Courses You Need to Learn</h2>
-
-              {result.learning_plan.map((item, i) => (
-                <div key={i} className="roadmap-item">
-                  <b>{item.skill}</b>
-                  <p>Priority: {item.priority}</p>
-
-                  <div
-                    className="course clickable"
-                    onClick={() =>
-                      openLink(
-                        `https://www.coursera.org/search?query=${encodeURIComponent(
-                          item.skill
-                        )}`
-                      )
-                    }
-                  >
-                    📘 Coursera – {item.skill}
-                  </div>
-
-                  <div
-                    className="course clickable"
-                    onClick={() =>
-                      openLink(
-                        `https://nptel.ac.in/courses/search?searchText=${encodeURIComponent(
-                          item.skill
-                        )}`
-                      )
-                    }
-                  >
-                    🎓 NPTEL – {item.skill}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* ================= READINESS ================= */}
-          {result.job_readiness && (
-            <div className="card">
-              <h2>📊 Job Readiness</h2>
-              <p>
-                Status: <b>{result.job_readiness.status}</b>
-              </p>
-              <p>
-                Match Score: {result.job_readiness.match_score}%
-              </p>
             </div>
           )}
         </>

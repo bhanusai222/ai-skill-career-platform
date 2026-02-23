@@ -10,25 +10,17 @@ function App() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  /* ================= WAIT UNTIL BACKEND IS READY ================= */
-  const waitForBackend = async () => {
-    console.log("Checking backend status...");
-
-    for (let i = 0; i < 15; i++) {
-      try {
-        const res = await fetch(API_URL);
-        if (res.ok) {
-          console.log("Backend is awake ✅");
-          return;
-        }
-      } catch (err) {
-        console.log("Still sleeping...");
-      }
-
-      await new Promise((r) => setTimeout(r, 5000)); // wait 5 sec
+  /* ================= WAKE BACKEND (SAFE VERSION) ================= */
+  const wakeBackend = async () => {
+    try {
+      console.log("Waking backend...");
+      await fetch(API_URL, { method: "GET" });
+    } catch (err) {
+      console.log("Backend wake request sent");
     }
 
-    throw new Error("Backend did not wake in time");
+    // Render free tier may take 40-60 sec
+    await new Promise((resolve) => setTimeout(resolve, 45000));
   };
 
   /* ================= FILE SELECT ================= */
@@ -61,9 +53,10 @@ function App() {
     setResult(null);
 
     try {
-      // 🔥 WAIT UNTIL BACKEND FULLY AWAKE
-      await waitForBackend();
+      // STEP 1: Wake backend and wait
+      await wakeBackend();
 
+      // STEP 2: Upload resume
       const formData = new FormData();
       formData.append("file", file);
 
@@ -72,13 +65,17 @@ function App() {
         body: formData,
       });
 
-      if (!res.ok) throw new Error("Upload failed");
+      if (!res.ok) {
+        throw new Error("Upload failed");
+      }
 
       const data = await res.json();
       setResult(data);
     } catch (err) {
-      console.error(err);
-      alert("Server is starting... please wait 1 minute and try again.");
+      console.error("Upload error:", err);
+      alert(
+        "Server is starting. Please wait 1 minute and click Analyze again."
+      );
     } finally {
       setLoading(false);
     }
@@ -117,6 +114,7 @@ function App() {
 
       {result && (
         <>
+          {/* ================= SKILLS ================= */}
           {Array.isArray(result.user_profile?.skills) && (
             <div className="card">
               <h2>🛠 Skills Extracted</h2>
@@ -130,6 +128,7 @@ function App() {
             </div>
           )}
 
+          {/* ================= JOBS ================= */}
           {Array.isArray(result.job_opportunities) && (
             <div className="card">
               <h2>💼 Job Opportunities</h2>

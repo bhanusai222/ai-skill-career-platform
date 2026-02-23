@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import "./App.css";
 
-/* 🔥 IMPORTANT: fallback if env variable not set */
+/* ================= BACKEND URL ================= */
 const API_URL =
   process.env.REACT_APP_API_URL ||
   "https://ai-skill-career-platform-xla3.onrender.com";
@@ -10,6 +10,39 @@ function App() {
   const [file, setFile] = useState(null);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  /* ================= BACKEND WAKE ================= */
+  const wakeBackend = async () => {
+    try {
+      console.log("Waking backend...");
+      await fetch(API_URL);
+      await new Promise((res) => setTimeout(res, 5000));
+      console.log("Backend awake");
+    } catch (e) {
+      console.log("Wake attempt failed (normal if sleeping)");
+    }
+  };
+
+  /* ================= FILE CHANGE ================= */
+  const handleFileChange = (e) => {
+    const selectedFile = e.target.files[0];
+
+    if (!selectedFile) {
+      setFile(null);
+      return;
+    }
+
+    // Validate PDF
+    if (selectedFile.type !== "application/pdf") {
+      alert("Please upload only PDF file");
+      e.target.value = "";
+      setFile(null);
+      return;
+    }
+
+    console.log("Selected file:", selectedFile.name);
+    setFile(selectedFile);
+  };
 
   /* ================= UPLOAD ================= */
   const uploadResume = async () => {
@@ -25,30 +58,34 @@ function App() {
     formData.append("file", file);
 
     try {
-      const res = await fetch(`${API_URL}/upload-resume`, {
+      await wakeBackend();
+
+      const response = await fetch(`${API_URL}/upload-resume`, {
         method: "POST",
         body: formData,
       });
 
-      if (!res.ok) {
-        throw new Error("Backend response error");
+      if (!response.ok) {
+        throw new Error("Backend error");
       }
 
-      const data = await res.json();
+      const data = await response.json();
+      console.log("Backend response:", data);
+
       setResult(data);
-    } catch (err) {
-      console.error("Backend connection error:", err);
-      alert("❌ Backend sleeping or not connected. Wait 30 sec and try again.");
+    } catch (error) {
+      console.error("Upload error:", error);
+      alert("⚠️ Backend waking up... please wait 30 seconds and try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  /* ================= SAFE LINK OPEN ================= */
+  /* ================= SAFE LINK ================= */
   const openLink = (url) => {
     if (!url) return;
-    const safe = url.startsWith("http") ? url : `https://${url}`;
-    window.open(safe, "_blank", "noopener,noreferrer");
+    const safeUrl = url.startsWith("http") ? url : `https://${url}`;
+    window.open(safeUrl, "_blank", "noopener,noreferrer");
   };
 
   /* ================= SALARY ================= */
@@ -69,9 +106,10 @@ function App() {
       <div className="card upload-card">
         <input
           type="file"
-          accept=".pdf"
-          onChange={(e) => setFile(e.target.files[0])}
+          accept="application/pdf"
+          onChange={handleFileChange}
         />
+
         <button onClick={uploadResume} disabled={loading}>
           {loading ? "Analyzing Resume..." : "Analyze Resume"}
         </button>
@@ -81,7 +119,7 @@ function App() {
         <>
           {/* ================= SKILLS ================= */}
           <div className="card">
-            <h2>🛠 Skills Extracted From Your Resume</h2>
+            <h2>🛠 Skills Extracted</h2>
             <div className="skill-list">
               {result.user_profile?.skills?.map((skill, i) => (
                 <span key={i} className="skill-chip">
@@ -94,14 +132,9 @@ function App() {
           {/* ================= JOBS ================= */}
           {Array.isArray(result.job_opportunities) && (
             <div className="card">
-              <h2>💼 Jobs Based on Your Resume Skills</h2>
-
+              <h2>💼 Job Opportunities</h2>
               <div className="job-grid">
                 {result.job_opportunities.map((job, i) => {
-                  const hasApiLink =
-                    Array.isArray(job.apply_links) &&
-                    job.apply_links.some((l) => l?.url);
-
                   const fallbackLink = `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(
                     job.role || job.title || ""
                   )}`;
@@ -110,43 +143,19 @@ function App() {
                     <div key={i} className="job-card">
                       <h3>{job.role || job.title}</h3>
                       <p>{job.company || "Company not specified"}</p>
+                      <p className="salary">
+                        💰 {salaryByRole(job.role)}
+                      </p>
 
-                      {/* TAGS */}
-                      <div className="job-tags">
-                        <span className="tag fresher">Fresher</span>
-                        <span className="tag experienced">Experienced</span>
-                        <span className="tag remote">Remote</span>
-                      </div>
-
-                      <p className="salary">💰 {salaryByRole(job.role)}</p>
-
-                      {/* SOURCE */}
-                      <div className="job-source">
-                        {hasApiLink ? (
-                          <span className="badge google">Google Jobs</span>
-                        ) : (
-                          <span className="badge linkedin">LinkedIn</span>
-                        )}
-                      </div>
-
-                      {/* APPLY */}
-                      {hasApiLink ? (
-                        job.apply_links.map(
-                          (link, idx) =>
-                            link?.url && (
-                              <button
-                                key={idx}
-                                onClick={() => openLink(link.url)}
-                              >
-                                Apply on {link.platform}
-                              </button>
-                            )
-                        )
-                      ) : (
-                        <button onClick={() => openLink(fallbackLink)}>
-                          Apply on LinkedIn
-                        </button>
-                      )}
+                      <button
+                        onClick={() =>
+                          openLink(
+                            job.apply_links?.[0]?.url || fallbackLink
+                          )
+                        }
+                      >
+                        Apply
+                      </button>
                     </div>
                   );
                 })}
@@ -155,81 +164,15 @@ function App() {
           )}
 
           {/* ================= CAREER ================= */}
-          <div className="card">
-            <h2>🎯 Recommended Career</h2>
-            <p><b>Role:</b> {result.career?.role}</p>
-            <p><b>Timeline:</b> {result.career?.timeline}</p>
-            <p><b>Risk:</b> {result.career?.risk}</p>
-            <p className="salary">
-              💰 Expected Salary: {salaryByRole(result.career?.role)}
-            </p>
-          </div>
-
-          {/* ================= COURSES ================= */}
-          {Array.isArray(result.learning_plan) && (
+          {result.career && (
             <div className="card">
-              <h2>📚 Skills & Courses You Need to Learn</h2>
-
-              {result.learning_plan.map((item, i) => (
-                <div key={i} className="roadmap-item">
-                  <b>{item.skill}</b>
-                  <p>Priority: {item.priority}</p>
-
-                  <div
-                    className="course clickable"
-                    onClick={() =>
-                      openLink(
-                        `https://www.coursera.org/search?query=${encodeURIComponent(
-                          item.skill
-                        )}`
-                      )
-                    }
-                  >
-                    📘 Coursera – {item.skill}
-                  </div>
-
-                  <div
-                    className="course clickable"
-                    onClick={() =>
-                      openLink(
-                        `https://nptel.ac.in/courses/search?searchText=${encodeURIComponent(
-                          item.skill
-                        )}`
-                      )
-                    }
-                  >
-                    🎓 NPTEL – {item.skill}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* ================= FUTURE JOBS ================= */}
-          {Array.isArray(result.learning_plan) && (
-            <div className="card">
-              <h2>📈 Jobs After Learning These Skills</h2>
-
-              <div className="job-grid">
-                {result.learning_plan.map((item, i) => (
-                  <div key={i} className="job-card future">
-                    <h3>{item.skill} Developer</h3>
-                    <p className="salary">💰 ₹7 – 15 LPA</p>
-
-                    <button
-                      onClick={() =>
-                        openLink(
-                          `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(
-                            item.skill
-                          )}`
-                        )
-                      }
-                    >
-                      View Jobs
-                    </button>
-                  </div>
-                ))}
-              </div>
+              <h2>🎯 Recommended Career</h2>
+              <p><b>Role:</b> {result.career.role}</p>
+              <p><b>Timeline:</b> {result.career.timeline}</p>
+              <p><b>Risk:</b> {result.career.risk}</p>
+              <p className="salary">
+                💰 Expected Salary: {salaryByRole(result.career.role)}
+              </p>
             </div>
           )}
 
@@ -237,8 +180,8 @@ function App() {
           {result.job_readiness && (
             <div className="card">
               <h2>📊 Job Readiness</h2>
-              <p>Status: <b>{result.job_readiness.status}</b></p>
-              <p>Match Score: {result.job_readiness.match_score}%</p>
+              <p><b>Status:</b> {result.job_readiness.status}</p>
+              <p><b>Match Score:</b> {result.job_readiness.match_score}%</p>
             </div>
           )}
         </>

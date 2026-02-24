@@ -12,19 +12,22 @@ from agents.salary_prediction.service import predict_salary
 
 app = FastAPI()
 
-# CORS
+# ================= CORS FIX (IMPORTANT) =================
+# This allows Netlify frontend to connect to Render backend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["*"],  # allow all domains (frontend deployed anywhere)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# ================= HOME =================
 @app.get("/")
 def home():
     return {"message": "AI Career Platform is running"}
 
+# ================= UPLOAD RESUME =================
 @app.post("/upload-resume")
 async def upload_resume(file: UploadFile = File(...)):
     """
@@ -52,7 +55,7 @@ async def upload_resume(file: UploadFile = File(...)):
     # 5️⃣ Learning Plan
     learning_plan = create_learning_plan(skill_gap)
 
-    # 6️⃣ Live Jobs (resume skills)
+    # 6️⃣ Live Jobs
     job_opportunities = fetch_live_jobs(skills)
 
     # 7️⃣ Trending Courses
@@ -69,7 +72,7 @@ async def upload_resume(file: UploadFile = File(...)):
         remote=True
     )
 
-    # ✅ FINAL RESPONSE
+    # ================= FINAL RESPONSE =================
     return {
         "user_profile": user,
         "skill_gap": skill_gap,

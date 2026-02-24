@@ -10,20 +10,7 @@ function App() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  /* ================= WAKE BACKEND (SAFE VERSION) ================= */
-  const wakeBackend = async () => {
-    try {
-      console.log("Waking backend...");
-      await fetch(API_URL, { method: "GET" });
-    } catch (err) {
-      console.log("Backend wake request sent");
-    }
-
-    // Render free tier may take 40-60 sec
-    await new Promise((resolve) => setTimeout(resolve, 45000));
-  };
-
-  /* ================= FILE SELECT ================= */
+  /* FILE SELECT */
   const handleFileChange = (e) => {
     const selected = e.target.files[0];
 
@@ -42,7 +29,7 @@ function App() {
     setFile(selected);
   };
 
-  /* ================= UPLOAD ================= */
+  /* UPLOAD RESUME */
   const uploadResume = async () => {
     if (!file) {
       alert("Please upload a resume PDF");
@@ -53,10 +40,6 @@ function App() {
     setResult(null);
 
     try {
-      // STEP 1: Wake backend and wait
-      await wakeBackend();
-
-      // STEP 2: Upload resume
       const formData = new FormData();
       formData.append("file", file);
 
@@ -65,28 +48,26 @@ function App() {
         body: formData,
       });
 
-      if (!res.ok) {
-        throw new Error("Upload failed");
-      }
+      if (!res.ok) throw new Error("Upload failed");
 
       const data = await res.json();
       setResult(data);
     } catch (err) {
-      console.error("Upload error:", err);
-      alert(
-        "Server is starting. Please wait 1 minute and click Analyze again."
-      );
+      console.error(err);
+      alert("Backend connection failed. Try again.");
     } finally {
       setLoading(false);
     }
   };
 
+  /* OPEN LINK */
   const openLink = (url) => {
     if (!url) return;
     const safe = url.startsWith("http") ? url : `https://${url}`;
     window.open(safe, "_blank", "noopener,noreferrer");
   };
 
+  /* SALARY */
   const salaryByRole = (role = "") => {
     const r = role?.toLowerCase() || "";
     if (r.includes("ai") || r.includes("machine")) return "₹8 – 16 LPA";
@@ -100,35 +81,30 @@ function App() {
     <div className="app">
       <h1>🚀 AI Skill & Career Intelligence Platform</h1>
 
+      {/* UPLOAD */}
       <div className="card upload-card">
-        <input
-          type="file"
-          accept="application/pdf"
-          onChange={handleFileChange}
-        />
+        <input type="file" accept="application/pdf" onChange={handleFileChange} />
 
         <button onClick={uploadResume} disabled={loading}>
-          {loading ? "Starting Server & Analyzing..." : "Analyze Resume"}
+          {loading ? "Analyzing Resume..." : "Analyze Resume"}
         </button>
       </div>
 
       {result && (
         <>
-          {/* ================= SKILLS ================= */}
+          {/* SKILLS */}
           {Array.isArray(result.user_profile?.skills) && (
             <div className="card">
               <h2>🛠 Skills Extracted</h2>
               <div className="skill-list">
                 {result.user_profile.skills.map((skill, i) => (
-                  <span key={i} className="skill-chip">
-                    {skill}
-                  </span>
+                  <span key={i} className="skill-chip">{skill}</span>
                 ))}
               </div>
             </div>
           )}
 
-          {/* ================= JOBS ================= */}
+          {/* JOBS */}
           {Array.isArray(result.job_opportunities) && (
             <div className="card">
               <h2>💼 Job Opportunities</h2>
@@ -142,9 +118,7 @@ function App() {
                     <div key={i} className="job-card">
                       <h3>{job?.role || job?.title}</h3>
                       <p>{job?.company || "Company not specified"}</p>
-                      <p className="salary">
-                        💰 {salaryByRole(job?.role)}
-                      </p>
+                      <p className="salary">💰 {salaryByRole(job?.role)}</p>
 
                       <button
                         onClick={() =>

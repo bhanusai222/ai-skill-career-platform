@@ -10,21 +10,17 @@ function App() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // file select
   const handleFileChange = (e) => {
     const selected = e.target.files[0];
-
     if (!selected) return;
 
     if (selected.type !== "application/pdf") {
       alert("Upload PDF only");
       return;
     }
-
     setFile(selected);
   };
 
-  // upload resume
   const uploadResume = async () => {
     if (!file) {
       alert("Upload resume first");
@@ -48,20 +44,18 @@ function App() {
       const data = await res.json();
       setResult(data);
     } catch (err) {
-      console.error(err);
       alert("Backend connection failed");
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  // open link
   const openLink = (url) => {
     if (!url) return;
     window.open(url.startsWith("http") ? url : `https://${url}`, "_blank");
   };
 
-  // salary helper
   const salaryByRole = (role = "") => {
     const r = role.toLowerCase();
     if (r.includes("ai")) return "₹8–16 LPA";
@@ -72,31 +66,28 @@ function App() {
   };
 
   return (
-    <div className="app">
-      <h1>🚀 AI Skill & Career Intelligence Platform</h1>
+    <div className="app dark">
+      <h1 className="title">🚀 AI Skill & Career Intelligence Platform</h1>
 
       {/* Upload */}
-      <div className="card upload-card">
+      <div className="card">
         <input type="file" accept="application/pdf" onChange={handleFileChange} />
 
-        <button onClick={uploadResume} disabled={loading}>
+        <button className="main-btn" onClick={uploadResume} disabled={loading}>
           {loading ? "Analyzing Resume..." : "Analyze Resume"}
         </button>
       </div>
 
-      {/* RESULT */}
       {result && (
-        <div>
-
+        <>
           {/* SKILLS */}
-          {result.user_profile && (
+          {result.user_profile?.skills && (
             <div className="card">
               <h2>🛠 Skills Extracted</h2>
               <div className="skill-list">
-                {result.user_profile.skills &&
-                  result.user_profile.skills.map((skill, i) => (
-                    <span key={i} className="skill-chip">{skill}</span>
-                  ))}
+                {result.user_profile.skills.map((skill, i) => (
+                  <span key={i} className="skill-chip">{skill}</span>
+                ))}
               </div>
             </div>
           )}
@@ -118,13 +109,10 @@ function App() {
                       <p className="salary">💰 {salaryByRole(job.role)}</p>
 
                       <button
+                        className="apply-btn"
                         onClick={() =>
                           openLink(
-                            job.apply_links &&
-                            job.apply_links[0] &&
-                            job.apply_links[0].url
-                              ? job.apply_links[0].url
-                              : fallback
+                            job.apply_links?.[0]?.url || fallback
                           )
                         }
                       >
@@ -144,40 +132,52 @@ function App() {
 
               {result.learning_plan.map((item, i) => (
                 <div key={i} className="roadmap-item">
-                  <b>{item.skill}</b>
+                  <h3>{item.skill}</h3>
                   <p>Priority: {item.priority}</p>
 
-                  <button
-                    onClick={() =>
-                      openLink(
-                        "https://www.youtube.com/results?search_query=" +
-                          encodeURIComponent(item.skill + " course")
-                      )
-                    }
-                  >
-                    Learn YouTube
-                  </button>
+                  <div className="course-btns">
+                    <button
+                      onClick={() =>
+                        openLink(
+                          "https://www.youtube.com/results?search_query=" +
+                            encodeURIComponent(item.skill + " course")
+                        )
+                      }
+                    >
+                      ▶ YouTube
+                    </button>
 
-                  <button
-                    onClick={() =>
-                      openLink(
-                        "https://www.coursera.org/search?query=" +
-                          encodeURIComponent(item.skill)
-                      )
-                    }
-                  >
-                    Learn Coursera
-                  </button>
+                    <button
+                      onClick={() =>
+                        openLink(
+                          "https://www.coursera.org/search?query=" +
+                            encodeURIComponent(item.skill)
+                        )
+                      }
+                    >
+                      🎓 Coursera
+                    </button>
+
+                    <button
+                      onClick={() =>
+                        openLink(
+                          "https://nptel.ac.in/courses?search=" +
+                            encodeURIComponent(item.skill)
+                        )
+                      }
+                    >
+                      🏫 NPTEL
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
           )}
 
-          {/* JOBS FROM COURSES */}
+          {/* JOBS AFTER COURSES */}
           {result.learning_plan && (
             <div className="card">
-              <h2>🚀 Jobs Based on Recommended Skills</h2>
-
+              <h2>🚀 Jobs After Learning These Skills</h2>
               <div className="job-grid">
                 {result.learning_plan.map((item, i) => (
                   <div key={i} className="job-card">
@@ -185,6 +185,7 @@ function App() {
                     <p className="salary">💰 ₹6–15 LPA</p>
 
                     <button
+                      className="apply-btn"
                       onClick={() =>
                         openLink(
                           "https://www.linkedin.com/jobs/search/?keywords=" +
@@ -196,6 +197,7 @@ function App() {
                     </button>
 
                     <button
+                      className="apply-btn"
                       onClick={() =>
                         openLink(
                           "https://www.indeed.com/jobs?q=" +
@@ -210,8 +212,7 @@ function App() {
               </div>
             </div>
           )}
-
-        </div>
+        </>
       )}
     </div>
   );
